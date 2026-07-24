@@ -1,0 +1,7 @@
+export { default as HomePage } from './HomePage'
+export { default as StoriesPage } from './StoriesPage'
+export { default as StoryPage } from './StoryPage'
+export { default as ChildrenPage } from './ChildrenPage'
+export { default as GalleryPage } from './GalleryPage'
+export { default as AboutPage } from './AboutPage'
+export { default as NotFoundPage } from './NotFoundPage'
