@@ -12,9 +12,9 @@ function Header() {
   return (
     <header className="header">
       <div className="header__inner">
-        <a href="#/" className="header__logo">
+        <NavLink to="/" className="header__logo">
           Задворка 2026
-        </a>
+        </NavLink>
         <nav className="header__nav" aria-label="Основная навигация">
           {NAV_ITEMS.map((item) => (
             <NavLink

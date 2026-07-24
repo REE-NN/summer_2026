@@ -1,15 +1,24 @@
-const REPO_URL = 'https://github.com/ree-nn/summer_2026'
+import Hero from '../components/Hero'
+import FeaturedStories from '../components/FeaturedStories'
+import ChildrenPreview from '../components/ChildrenPreview'
+import Statistics from '../components/Statistics'
+import AboutPreview from '../components/AboutPreview'
+import { INTRO_TEXT } from '../data/homeContent'
 
 function HomePage() {
   return (
-    <section className="page-section">
-      <h1>Задворка 2026</h1>
-      <p className="page-section__subtitle">Сайт-воспоминание о лете 2026 года</p>
-      <p className="page-section__repo">
-        Исходный код проекта на{' '}
-        <a href={REPO_URL} target="_blank" rel="noopener noreferrer">GitHub</a>.
-      </p>
-    </section>
+    <>
+      <Hero />
+      <div className="home-content">
+        <section className="intro">
+          <p className="intro__text">{INTRO_TEXT}</p>
+        </section>
+        <FeaturedStories />
+        <ChildrenPreview />
+        <Statistics />
+        <AboutPreview />
+      </div>
+    </>
   )
 }
 

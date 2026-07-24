@@ -4,11 +4,17 @@ function StoryPage() {
   const { storyId } = useParams<{ storyId: string }>()
 
   return (
-    <section className="page-section">
-      <h1>История</h1>
-      <p className="page-section__note">Раздел находится в разработке.</p>
-      {storyId && <p className="page-section__meta">Идентификатор истории: {storyId}</p>}
-    </section>
+    <div className="page-wrapper">
+      <section className="page-section">
+        <h1 className="page-section__title">История</h1>
+        <p className="page-section__note">Раздел находится в разработке.</p>
+        {storyId && (
+          <p className="page-section__meta">
+            Идентификатор истории: {storyId}
+          </p>
+        )}
+      </section>
+    </div>
   )
 }
 
