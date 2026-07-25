@@ -154,6 +154,67 @@ function MediaPreview({ item }: { item: MediaItem | null }) {
   )
 }
 
+function HelpContent() {
+  return (
+    <div className="cm-help" role="tabpanel" id="cm-help-panel" aria-labelledby="cm-tab-help">
+      <h2 className="cm-help__title">Справка</h2>
+
+      <section className="cm-help__section">
+        <h3 className="cm-help__section-title">Запуск проекта</h3>
+        <pre className="cm-help__code">npm install</pre>
+        <pre className="cm-help__code">npm run dev</pre>
+        <p className="cm-help__text">
+          После запуска dev-сервера сайт доступен по адресу{' '}
+          <code className="cm-help__inline-code">http://localhost:5173/summer_2026/</code>.
+        </p>
+        <p className="cm-help__text">
+          Content manager (эта страница) —{' '}
+          <code className="cm-help__inline-code">http://localhost:5173/summer_2026/#/content-manager</code>.
+        </p>
+        <p className="cm-help__text">
+          Content manager доступен <strong>только в development-режиме</strong>.
+          В production-сборке маршрут отсутствует, переход открывает 404.
+        </p>
+      </section>
+
+      <section className="cm-help__section">
+        <h3 className="cm-help__section-title">Проверка production-сборки</h3>
+        <pre className="cm-help__code">npm run build</pre>
+        <pre className="cm-help__code">npm run preview</pre>
+        <p className="cm-help__text">
+          В production-сборке content manager не включается —
+          переход на <code className="cm-help__inline-code">/content-manager</code> открывает 404.
+        </p>
+      </section>
+
+      <section className="cm-help__section">
+        <h3 className="cm-help__section-title">Ссылки</h3>
+        <ul className="cm-help__list">
+          <li>
+            <strong>Репозиторий</strong> —{' '}
+            <a href="https://github.com/REE-NN/summer_2026" target="_blank" rel="noopener noreferrer">
+              github.com/REE-NN/summer_2026
+            </a>{' '}
+            (исходный код, разработка)
+          </li>
+          <li>
+            <strong>GitHub Pages</strong> —{' '}
+            <a href="https://REE-NN.github.io/summer_2026" target="_blank" rel="noopener noreferrer">
+              REE-NN.github.io/summer_2026
+            </a>{' '}
+            (опубликованный сайт, будет добавлен позже)
+          </li>
+        </ul>
+        <p className="cm-help__text">
+          Репозиторий содержит все исходные файлы. GitHub Pages — финальная публичная версия сайта.
+          Локальный dev-сервер используется для разработки и отладки. Порты localhost могут
+          отличаться от указанных, если стандартный порт 5173 занят.
+        </p>
+      </section>
+    </div>
+  )
+}
+
 function ContentManagerPage() {
   const allMedia = useMemo(() => getAllMedia(), [])
   const categories = useMemo(() => getUniqueCategories(allMedia), [allMedia])
@@ -169,6 +230,7 @@ function ContentManagerPage() {
   const [selectedId, setSelectedId] = useState<string | null>(
     allMedia.length > 0 ? allMedia[0].id : null,
   )
+  const [mode, setMode] = useState<'browse' | 'help'>('browse')
 
   const filtered = useMemo(
     () => (filter ? allMedia.filter((m) => m.category === filter) : allMedia),
@@ -209,31 +271,60 @@ function ContentManagerPage() {
         />
 
         <div className="cm-main">
-          <div className="cm-nav">
+          <div className="cm-tabs" role="tablist">
             <button
-              className="cm-btn"
-              onClick={goPrev}
-              disabled={currentIndex <= 0}
-              aria-label="Предыдущее"
+              className={`cm-tabs__tab${mode === 'browse' ? ' cm-tabs__tab--active' : ''}`}
+              onClick={() => setMode('browse')}
+              role="tab"
+              aria-selected={mode === 'browse'}
+              aria-controls="cm-browse-panel"
+              id="cm-tab-browse"
             >
-              ← Предыдущее
+              Просмотр
             </button>
-            <span className="cm-nav__counter">
-              {filtered.length > 0
-                ? `${currentIndex + 1} из ${filtered.length}`
-                : '—'}
-            </span>
             <button
-              className="cm-btn"
-              onClick={goNext}
-              disabled={currentIndex < 0 || currentIndex >= filtered.length - 1}
-              aria-label="Следующее"
+              className={`cm-tabs__tab${mode === 'help' ? ' cm-tabs__tab--active' : ''}`}
+              onClick={() => setMode('help')}
+              role="tab"
+              aria-selected={mode === 'help'}
+              aria-controls="cm-help-panel"
+              id="cm-tab-help"
             >
-              Следующее →
+              Справка
             </button>
           </div>
 
-          <MediaPreview item={selectedItem} />
+          {mode === 'browse' ? (
+            <>
+              <div className="cm-nav">
+                <button
+                  className="cm-btn"
+                  onClick={goPrev}
+                  disabled={currentIndex <= 0}
+                  aria-label="Предыдущее"
+                >
+                  ← Предыдущее
+                </button>
+                <span className="cm-nav__counter">
+                  {filtered.length > 0
+                    ? `${currentIndex + 1} из ${filtered.length}`
+                    : '—'}
+                </span>
+                <button
+                  className="cm-btn"
+                  onClick={goNext}
+                  disabled={currentIndex < 0 || currentIndex >= filtered.length - 1}
+                  aria-label="Следующее"
+                >
+                  Следующее →
+                </button>
+              </div>
+
+              <MediaPreview item={selectedItem} />
+            </>
+          ) : (
+            <HelpContent />
+          )}
         </div>
       </div>
     </div>
