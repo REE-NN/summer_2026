@@ -159,3 +159,22 @@ export function getUniqueCategories(items: MediaItem[]): string[] {
   const cats = new Set(items.map((i) => i.category))
   return Array.from(cats).sort()
 }
+
+/** Единый список категорий для редактора. Все существующие + unsorted + unused. */
+export const CATEGORIES: { value: string; label: string }[] = [
+  { value: 'hero', label: 'Главное' },
+  { value: 'garden', label: 'Сад' },
+  { value: 'river', label: 'Река' },
+  { value: 'dog', label: 'Собака' },
+  { value: 'village', label: 'Деревня' },
+  { value: 'village-days', label: 'Деревня (будни)' },
+  { value: 'drawing', label: 'Рисунок' },
+  { value: 'clay', label: 'Пластилин' },
+  { value: 'paper', label: 'Бумага' },
+  { value: 'unsorted', label: 'Без сортировки' },
+  { value: 'unused', label: 'Не используется' },
+]
+
+export function isCategoryValid(value: string): boolean {
+  return CATEGORIES.some((c) => c.value === value)
+}
