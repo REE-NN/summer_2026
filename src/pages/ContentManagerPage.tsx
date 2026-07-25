@@ -9,6 +9,14 @@ import {
   type MediaItem,
 } from '../data/mediaAdapter'
 
+// ---- Constants ----
+
+const ACCEPTED_VIDEO_EXT = ['mp4', 'webm']
+const ACCEPTED_MEDIA_TYPES = [
+  'image/jpeg', 'image/png', 'image/webp',
+  'video/mp4', 'video/webm',
+]
+
 // ---- Types ----
 
 interface MediaDraft {
@@ -33,7 +41,31 @@ interface ValidationErrors {
 
 type SaveStatus = 'clean' | 'dirty' | 'saved'
 
+type PageMode = 'browse' | 'help' | 'add'
+
 // ---- Helpers ----
+
+function getFileExtension(name: string): string {
+  return name.split('.').pop()?.toLowerCase() ?? ''
+}
+
+function detectType(name: string): 'image' | 'video' {
+  const ext = getFileExtension(name)
+  return ACCEPTED_VIDEO_EXT.includes(ext) ? 'video' : 'image'
+}
+
+function computeNextId(items: Map<string, MediaItem>): string {
+  let max = 0
+  for (const id of items.keys()) {
+    const num = parseInt(id.replace(/^.*?(\d+)$/, '$1'), 10)
+    if (!isNaN(num) && num > max) max = num
+  }
+  return `media-${max + 1}`
+}
+
+function isMediaTypeAllowed(file: File): boolean {
+  return ACCEPTED_MEDIA_TYPES.includes(file.type)
+}
 
 function createDraftFrom(item: MediaItem): MediaDraft {
   return {
@@ -178,6 +210,222 @@ function ConfirmDialog({
   )
 }
 
+// ---- AddMediaForm ----
+
+function AddMediaForm({
+  file,
+  draft,
+  onDraftChange,
+  onSave,
+  onCancel,
+  nextId,
+  errors,
+}: {
+  file: File
+  draft: MediaDraft
+  onDraftChange: (d: MediaDraft) => void
+  onSave: () => void
+  onCancel: () => void
+  nextId: string
+  errors: ValidationErrors & { file?: string; src?: string }
+}) {
+  const previewUrl = useMemo(() => URL.createObjectURL(file), [file])
+  const fid = (name: string) => `cm-add-${name}`
+  const eid = (name: string) => `${fid(name)}-err`
+
+  useEffect(() => {
+    return () => URL.revokeObjectURL(previewUrl)
+  }, [previewUrl])
+
+  const upd = (field: keyof MediaDraft, value: string | boolean) => {
+    onDraftChange({ ...draft, [field]: value })
+  }
+
+  const hasErrors = Object.keys(errors).length > 0
+
+  return (
+    <div className="cm-editor cm-add-form">
+      {/* предпросмотр */}
+      <div className="cm-editor__image-wrap">
+        {draft.type === 'video' ? (
+          <video
+            src={previewUrl}
+            className="cm-editor__img"
+            controls
+            preload="metadata"
+          />
+        ) : (
+          <img
+            src={previewUrl}
+            alt={draft.alt || 'Новое изображение'}
+            className="cm-editor__img"
+          />
+        )}
+      </div>
+
+      {errors.file && <p className="cm-editor__error" role="alert">{errors.file}</p>}
+
+      {/* только для чтения */}
+      <div className="cm-editor__readonly">
+        <span className="cm-editor__ro-label">ID</span>
+        <span className="cm-editor__ro-value">{nextId}</span>
+      </div>
+      <div className="cm-editor__readonly">
+        <span className="cm-editor__ro-label">Файл</span>
+        <span className="cm-editor__ro-value">{file.name}</span>
+      </div>
+      {errors.src && <p className="cm-editor__error" id={eid('src')} role="alert">{errors.src}</p>}
+
+      {/* поля формы */}
+      <div className="cm-editor__fields">
+        {/* type */}
+        <div className="cm-editor__unit">
+          <label className="cm-editor__label" htmlFor={fid('type')}>Тип</label>
+          <div className="cm-editor__input-wrap">
+            <select
+              id={fid('type')}
+              className="cm-editor__select"
+              value={draft.type}
+              onChange={(e) => upd('type', e.target.value as 'image' | 'video')}
+              aria-invalid={!!errors.type}
+              aria-describedby={errors.type ? eid('type') : undefined}
+            >
+              <option value="image">Изображение</option>
+              <option value="video">Видео</option>
+            </select>
+            {errors.type && <p className="cm-editor__error" id={eid('type')} role="alert">{errors.type}</p>}
+          </div>
+        </div>
+
+        {/* category */}
+        <div className="cm-editor__unit">
+          <label className="cm-editor__label" htmlFor={fid('category')}>Категория</label>
+          <div className="cm-editor__input-wrap">
+            <select
+              id={fid('category')}
+              className="cm-editor__select"
+              value={draft.category}
+              onChange={(e) => upd('category', e.target.value)}
+              aria-invalid={!!errors.category}
+              aria-describedby={errors.category ? eid('category') : undefined}
+            >
+              {CATEGORIES.map((c) => (
+                <option key={c.value} value={c.value}>{c.label}</option>
+              ))}
+            </select>
+            {errors.category && <p className="cm-editor__error" id={eid('category')} role="alert">{errors.category}</p>}
+          </div>
+        </div>
+
+        {/* title */}
+        <div className="cm-editor__unit">
+          <label className="cm-editor__label" htmlFor={fid('title')}>Заголовок</label>
+          <div className="cm-editor__input-wrap">
+            <input
+              id={fid('title')}
+              className="cm-editor__input"
+              type="text"
+              value={draft.title}
+              onChange={(e) => upd('title', e.target.value)}
+              maxLength={120}
+              aria-invalid={!!errors.title}
+              aria-describedby={errors.title ? eid('title') : undefined}
+            />
+            <span className="cm-editor__counter">{draft.title.length}/120</span>
+            {errors.title && <p className="cm-editor__error" id={eid('title')} role="alert">{errors.title}</p>}
+          </div>
+        </div>
+
+        {/* alt */}
+        <div className="cm-editor__unit">
+          <label className="cm-editor__label" htmlFor={fid('alt')}>Alt</label>
+          <div className="cm-editor__input-wrap">
+            <input
+              id={fid('alt')}
+              className="cm-editor__input"
+              type="text"
+              value={draft.alt}
+              onChange={(e) => upd('alt', e.target.value)}
+              maxLength={200}
+              aria-invalid={!!errors.alt}
+              aria-describedby={errors.alt ? eid('alt') : undefined}
+            />
+            <span className="cm-editor__counter">{draft.alt.length}/200</span>
+            {errors.alt && <p className="cm-editor__error" id={eid('alt')} role="alert">{errors.alt}</p>}
+          </div>
+        </div>
+
+        {/* caption */}
+        <div className="cm-editor__unit">
+          <label className="cm-editor__label" htmlFor={fid('caption')}>Подпись</label>
+          <div className="cm-editor__input-wrap">
+            <textarea
+              id={fid('caption')}
+              className="cm-editor__textarea"
+              value={draft.caption}
+              onChange={(e) => upd('caption', e.target.value)}
+              maxLength={500}
+              rows={3}
+              aria-invalid={!!errors.caption}
+              aria-describedby={errors.caption ? eid('caption') : undefined}
+            />
+            <span className="cm-editor__counter">{draft.caption.length}/500</span>
+            {errors.caption && <p className="cm-editor__error" id={eid('caption')} role="alert">{errors.caption}</p>}
+          </div>
+        </div>
+
+        {/* featured */}
+        <div className="cm-editor__unit">
+          <div className="cm-editor__unit cm-editor__unit--row">
+            <input
+              id={fid('featured')}
+              className="cm-editor__checkbox"
+              type="checkbox"
+              checked={draft.featured}
+              onChange={(e) => upd('featured', e.target.checked)}
+            />
+            <label className="cm-editor__label cm-editor__label--row" htmlFor={fid('featured')}>
+              Главное изображение
+            </label>
+          </div>
+          <p className="cm-editor__hint">
+            Использовать как главное или приоритетное изображение.
+          </p>
+        </div>
+
+        {/* showInGallery */}
+        <div className="cm-editor__unit">
+          <div className="cm-editor__unit cm-editor__unit--row">
+            <input
+              id={fid('showInGallery')}
+              className="cm-editor__checkbox"
+              type="checkbox"
+              checked={draft.showInGallery}
+              onChange={(e) => upd('showInGallery', e.target.checked)}
+            />
+            <label className="cm-editor__label cm-editor__label--row" htmlFor={fid('showInGallery')}>
+              Показывать в общей галерее
+            </label>
+          </div>
+          <p className="cm-editor__hint">
+            Показывать эту фотографию на странице общей галереи.
+          </p>
+        </div>
+      </div>
+
+      {/* кнопки */}
+      <div className="cm-editor__actions">
+        <button className="cm-btn cm-btn--primary" onClick={onSave} disabled={hasErrors}>
+          Сохранить
+        </button>
+        <button className="cm-btn" onClick={onCancel}>
+          Отмена
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ---- MediaEditor ----
 
 function MediaEditor({
@@ -189,6 +437,7 @@ function MediaEditor({
   saveStatus,
   errors,
   savedItem,
+  previewSrc,
 }: {
   item: MediaItem
   draft: MediaDraft
@@ -198,6 +447,7 @@ function MediaEditor({
   saveStatus: SaveStatus
   errors: ValidationErrors
   savedItem: MediaItem
+  previewSrc: string
 }) {
   const fid = (name: string) => `cm-e-${item.id}-${name}`
   const eid = (name: string) => `${fid(name)}-err`
@@ -228,7 +478,7 @@ function MediaEditor({
           </div>
         ) : (
           <img
-            src={photoPath(item.src)}
+            src={previewSrc}
             alt={draft.alt || ''}
             className="cm-editor__img"
             onError={(e) => {
@@ -434,6 +684,8 @@ function MediaList({
   filter,
   onFilterChange,
   categories,
+  onAddClick,
+  getItemSrc,
 }: {
   items: MediaItem[]
   selectedId: string | null
@@ -441,12 +693,21 @@ function MediaList({
   filter: string | null
   onFilterChange: (cat: string | null) => void
   categories: { label: string; count: number }[]
+  onAddClick: () => void
+  getItemSrc: (item: MediaItem) => string
 }) {
   return (
     <div className="cm-list">
       <div className="cm-list__header">
         <h2 className="cm-list__title">Медиа</h2>
         <span className="cm-list__count">{items.length}</span>
+        <button
+          className="cm-btn cm-btn--small cm-btn--primary"
+          onClick={onAddClick}
+          aria-label="Добавить медиа"
+        >
+          + Добавить
+        </button>
       </div>
 
       <div className="cm-list__filter">
@@ -482,7 +743,7 @@ function MediaList({
             >
               <div className="cm-thumb__img-wrap">
                 <img
-                  src={photoPath(item.src)}
+                  src={getItemSrc(item)}
                   alt={item.alt || ''}
                   className="cm-thumb__img"
                   loading="lazy"
@@ -588,11 +849,28 @@ function ContentManagerPage() {
   const [selectedId, setSelectedId] = useState<string | null>(
     allItems.length > 0 ? allItems[0].id : null,
   )
-  const [mode, setMode] = useState<'browse' | 'help'>('browse')
+  const [mode, setMode] = useState<PageMode>('browse')
   const [draft, setDraft] = useState<MediaDraft | null>(null)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('clean')
   const [errors, setErrors] = useState<ValidationErrors>({})
   const [pendingNav, setPendingNav] = useState<string | null>(null)
+
+  // add media state
+  const [addingFile, setAddingFile] = useState<File | null>(null)
+  const [addDraft, setAddDraft] = useState<MediaDraft | null>(null)
+  const [addErrors, setAddErrors] = useState<ValidationErrors & { file?: string; src?: string }>({})
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // blob URL для локально добавленных файлов (не скопированных в public/)
+  const localBlobUrlsRef = useRef<Map<string, string>>(new Map())
+
+  // очистка blob URL при размонтировании
+  useEffect(() => {
+    const map = localBlobUrlsRef.current
+    return () => {
+      for (const url of map.values()) URL.revokeObjectURL(url)
+    }
+  }, [])
 
   const filtered = useMemo(
     () => (filter ? allItems.filter((m) => m.category === filter) : allItems),
@@ -611,6 +889,15 @@ function ContentManagerPage() {
 
   const currentIndex = filtered.findIndex((m) => m.id === selectedId)
   const selectedItem = filtered[currentIndex] ?? null
+
+  // Определение src для предпросмотра: blob URL для локально добавленных, photoPath для остальных
+  const selectedPreviewSrc = selectedItem
+    ? localBlobUrlsRef.current.get(selectedItem.id) || photoPath(selectedItem.src)
+    : null
+
+  const resolveSrc = useCallback((item: MediaItem): string => {
+    return localBlobUrlsRef.current.get(item.id) || photoPath(item.src)
+  }, [])
 
   // Создание draft при выборе элемента
   useEffect(() => {
@@ -714,6 +1001,122 @@ function ContentManagerPage() {
     }
   }, [selectedItem, savedItems])
 
+  // ---- Add media handlers ----
+
+  const handleAddClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!isMediaTypeAllowed(file)) {
+      setAddErrors({ file: `Недопустимый тип файла: ${file.type}` })
+      setAddingFile(null)
+      setAddDraft(null)
+      return
+    }
+
+    // Проверка конфликта имени файла
+    const fileName = file.name.toLowerCase()
+    for (const item of savedItems.values()) {
+      if (item.src.toLowerCase().endsWith(fileName)) {
+        setAddErrors({
+          src: `Файл с именем «${file.name}» уже существует в медиатеке (${item.src})`,
+        })
+        setAddingFile(null)
+        setAddDraft(null)
+        return
+      }
+    }
+
+    setAddingFile(file)
+    setAddDraft({
+      type: detectType(file.name),
+      category: 'unsorted',
+      title: '',
+      alt: '',
+      caption: '',
+      featured: false,
+      showInGallery: false,
+      nonSyntheticFields: [],
+    })
+    setAddErrors({})
+    setMode('add')
+    // Сброс input, чтобы можно было выбрать тот же файл повторно
+    e.target.value = ''
+  }
+
+  const handleAddSave = () => {
+    if (!addingFile || !addDraft) return
+    const nextId = computeNextId(savedItems)
+
+    const err: ValidationErrors & { file?: string; src?: string } = {}
+    if (addDraft.title.length > 120) err.title = 'Не более 120 символов'
+    if (addDraft.alt.length > 200) err.alt = 'Не более 200 символов'
+    if (addDraft.caption.length > 500) err.caption = 'Не более 500 символов'
+    if (addDraft.type !== 'image' && addDraft.type !== 'video') err.type = 'Недопустимый тип'
+    if (!isCategoryValid(addDraft.category)) err.category = 'Недопустимая категория'
+    if (savedItems.has(nextId)) err.file = 'Конфликт ID'
+
+    const fileName = addingFile.name.toLowerCase()
+    for (const item of savedItems.values()) {
+      if (item.src.toLowerCase().endsWith(fileName)) {
+        err.src = `Файл «${addingFile.name}» уже существует`
+        break
+      }
+    }
+
+    // Убираем пустые ошибки
+    const clean: typeof err = {}
+    for (const [k, v] of Object.entries(err)) {
+      if (v) clean[k as keyof typeof err] = v
+    }
+
+    if (Object.keys(clean).length > 0) { setAddErrors(clean); return }
+
+    const newItem: MediaItem = {
+      id: nextId,
+      src: `photos/${addDraft.category}/${addingFile.name}`,
+      type: addDraft.type,
+      category: addDraft.category,
+      title: addDraft.title || addingFile.name,
+      alt: addDraft.alt || addingFile.name,
+      caption: addDraft.caption || '',
+      featured: addDraft.featured,
+      showInGallery: addDraft.showInGallery,
+      syntheticFields: [],
+      roles: ['Добавлено через content manager'],
+    }
+
+    setSavedItems((prev) => {
+      const next = new Map(prev)
+      next.set(nextId, newItem)
+      return next
+    })
+
+    // blob URL для предпросмотра в текущей сессии
+    const blobUrl = URL.createObjectURL(addingFile)
+    localBlobUrlsRef.current.set(nextId, blobUrl)
+
+    setAddingFile(null)
+    setAddDraft(null)
+    setAddErrors({})
+    setMode('browse')
+    setSelectedId(nextId)
+    if (filter && filter !== newItem.category) {
+      setFilter(null)
+    }
+  }
+
+  const handleAddCancel = () => {
+    setAddingFile(null)
+    setAddDraft(null)
+    setAddErrors({})
+    setMode('browse')
+  }
+
   return (
     <div className="page-wrapper">
       {pendingNav && (
@@ -724,6 +1127,16 @@ function ContentManagerPage() {
         />
       )}
 
+      {/* скрытый input для выбора файла */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".jpg,.jpeg,.png,.webp,.mp4,.webm"
+        style={{ display: 'none' }}
+        onChange={handleFileChange}
+        aria-hidden="true"
+      />
+
       <div className="cm-layout">
         <MediaList
           items={filtered}
@@ -732,6 +1145,8 @@ function ContentManagerPage() {
           filter={filter}
           onFilterChange={handleFilterChange}
           categories={allCategoryCounts}
+          onAddClick={handleAddClick}
+          getItemSrc={resolveSrc}
         />
 
         <div className="cm-main">
@@ -758,7 +1173,17 @@ function ContentManagerPage() {
             </button>
           </div>
 
-          {mode === 'browse' ? (
+          {mode === 'add' && addingFile && addDraft ? (
+            <AddMediaForm
+              file={addingFile}
+              draft={addDraft}
+              onDraftChange={setAddDraft}
+              onSave={handleAddSave}
+              onCancel={handleAddCancel}
+              nextId={computeNextId(savedItems)}
+              errors={addErrors}
+            />
+          ) : mode === 'browse' ? (
             <>
               <div className="cm-nav">
                 <button
@@ -794,6 +1219,7 @@ function ContentManagerPage() {
                   saveStatus={saveStatus}
                   errors={errors}
                   savedItem={savedItems.get(selectedItem.id) ?? selectedItem}
+                  previewSrc={selectedPreviewSrc ?? photoPath(selectedItem.src)}
                 />
               ) : (
                 <div className="cm-editor cm-editor--empty">
