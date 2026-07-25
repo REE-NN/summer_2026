@@ -8,6 +8,7 @@ import {
   GalleryPage,
   AboutPage,
   NotFoundPage,
+  ContentManagerPage,
 } from './pages'
 
 function App() {
@@ -20,6 +21,9 @@ function App() {
         <Route path="children" element={<ChildrenPage />} />
         <Route path="gallery" element={<GalleryPage />} />
         <Route path="about" element={<AboutPage />} />
+        {import.meta.env.DEV && (
+          <Route path="content-manager" element={<ContentManagerPage />} />
+        )}
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>
